@@ -10,14 +10,26 @@ It can also make use of the global route planner to follow a specifed route
 """
 
 import carla
+import torch
+import matplotlib.pyplot as plt
+import carla.libcarla
 from shapely.geometry import Polygon
-
+import math
+import matplotlib
+matplotlib.use('TKAgg', force=True)
+import numpy as np
+import  agents.navigation.cubic_spline_planner as cp
 from agents.navigation.local_planner import LocalPlanner, RoadOption
+from agents.navigation.frenet_optimal_trajectory import FrenetPlanner
+from agents.navigation.frenet_optimal_trajectory import closest_wp_idx
+from agents.navigation.cubic_spline_planner import calc_bspline_course_2
 from agents.navigation.global_route_planner import GlobalRoutePlanner
+from agents.navigation.frenet_mai import get_frenet_traj, global_to_egocentric, egocentric_to_global
+# from agents.navigation.controller import VehiclePIDController
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
-
+from agents.tools.misc import draw_waypoints, get_speed
 
 class BasicAgent(object):
     """
@@ -58,11 +70,13 @@ class BasicAgent(object):
         self._use_bbs_detection = False
         self._target_speed = target_speed
         self._sampling_resolution = 2.0
-        self._base_tlight_threshold = 5.0  # meters
+        self._base_tlight_threshold = 0.5  # meters
         self._base_vehicle_threshold = 5.0  # meters
         self._speed_ratio = 1
         self._max_brake = 0.5
         self._offset = 0
+        self.f_idx = 0
+        # # self.vehicleController = VehiclePIDController(self._local_planner._vehicle, args_lateral={'K_P': 1.5, 'K_D': 0.0, 'K_I': 0.0})
 
         # Change parameters according to the dictionary
         opt_dict['target_speed'] = target_speed
@@ -89,6 +103,8 @@ class BasicAgent(object):
 
         # Initialize the planners
         self._local_planner = LocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map)
+        self.frenet_planner = FrenetPlanner()
+
         if grp_inst:
             if isinstance(grp_inst, GlobalRoutePlanner):
                 self._global_planner = grp_inst
@@ -161,6 +177,85 @@ class BasicAgent(object):
         route_trace = self.trace_route(start_waypoint, end_waypoint)
         self._local_planner.set_global_plan(route_trace, clean_queue=clean_queue)
 
+        wp_x, wp_y, wp_yaw,manuvers = [], [], [], []
+        rwp_x, rwp_y, rwp_yaw = [], [], []
+        lwp_x, lwp_y, lwp_yaw = [], [], []
+        
+        for wp,man in self._local_planner._waypoints_queue:
+            # Main Path
+            wp_x.append(wp.transform.location.x)
+            wp_y.append(wp.transform.location.y)
+            wp_yaw.append(np.deg2rad(wp.transform.rotation.yaw))
+            manuvers.append(man)
+
+            # Neighboring lanes
+            right_wp = wp.get_right_lane()
+            if right_wp is not None:
+                rwp_x.append(right_wp.transform.location.x)
+                rwp_y.append(right_wp.transform.location.y)
+                rwp_yaw.append(np.deg2rad(right_wp.transform.rotation.yaw))
+            else:
+                rwp_x.append(wp.transform.location.x)
+                rwp_y.append(wp.transform.location.y)
+                rwp_yaw.append(np.deg2rad(wp.transform.rotation.yaw))
+
+            left_wp = wp.get_left_lane()
+            if left_wp is not None:
+                lwp_x.append(left_wp.transform.location.x)
+                lwp_y.append(left_wp.transform.location.y)
+                lwp_yaw.append(np.deg2rad(left_wp.transform.rotation.yaw))
+            else:
+                lwp_x.append(wp.transform.location.x)
+                lwp_y.append(wp.transform.location.y)
+                lwp_yaw.append(np.deg2rad(wp.transform.rotation.yaw))
+            
+        current_lane =torch.tensor([wp_x, wp_y, wp_yaw]).T
+        right_lane =torch.tensor([rwp_x, rwp_y, rwp_yaw]).T
+        left_lane =torch.tensor([lwp_x, lwp_y, lwp_yaw]).T
+
+        map_lanes = torch.stack([current_lane, right_lane, left_lane])
+        # diff = torch.diff(map_lanes, dim=-2)
+        # # Torch Unique doesnt work
+        # non_zero_elem = torch.any(diff[...,:2,:] != 0.0)
+        # non_zero_elem = non_zero_elem.expand_as(diff)
+        # map_lane_unq = torch.masked_select(map_lanes[:,1:,:], non_zero_elem)
+        # self.map_lanes  = torch.cat([map_lanes[:,0,:], map_lane_unq], dim=-2)
+        map_lanes = torch.unique_consecutive(map_lanes, dim= -2)
+        path_len = 100
+        path_res = 0.5
+        self.map_lanes= torch.zeros((len(map_lanes),int(path_len//path_res),3))
+        for i,lane in enumerate(map_lanes):
+            tx, ty, tyaw, _ = cp.calc_bspline_course_2(
+                    lane[:,0].tolist(),
+                    lane[:,1].tolist(),
+                    path_len,
+                    path_res,
+            )
+            self.map_lanes[i,:,0] = torch.tensor(tx)
+            self.map_lanes[i,:,1] = torch.tensor(ty)
+            self.map_lanes[i,:,2] = torch.tensor(tyaw)
+        # path_len = 100
+        # x,y,yaw,k = calc_bspline_course_2(wp_x, wp_y, path_len,output_res=0.5)
+        
+        # # check for nans in x and y
+        # if np.any(np.isnan(x)) or np.any(np.isnan(y)) or x ==[] or y ==[]:
+        #     print("nan in x and y. Possible local planner error")
+        #     raise ValueError
+
+        # Construct Cubic Spline
+        # self.frenet_planner.update_global_route(zip(x,y))
+        # generate a single path
+        # self.frenet_planner.reset(0, 0, df_n=0, Tf=50, Vf_n=30 / 3.6, optimal_path=False)
+        
+        # temp = [self._vehicle.get_velocity(), self._vehicle.get_acceleration()]
+        # speed = get_speed(self._vehicle)
+        # acc_vec = self._vehicle.get_acceleration()
+        # acc = math.sqrt(acc_vec.x ** 2 + acc_vec.y ** 2 + acc_vec.z ** 2)
+        # psi = math.radians(self._vehicle.get_transform().rotation.yaw)
+        # ego_state = [self._vehicle.get_location().x, self._vehicle.get_location().y, speed, acc, psi, temp, 10]
+        # self.frenet_planner.run_step_single_path(ego_state, idx = 1 )
+
+
     def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
         """
         Adds a specific plan to the agent.
@@ -193,7 +288,7 @@ class BasicAgent(object):
         # Retrieve all relevant actors
         vehicle_list = self._world.get_actors().filter("*vehicle*")
 
-        vehicle_speed = get_speed(self._vehicle) / 3.6
+        vehicle_speed = get_speed(self._vehicle)
 
         # Check for possible vehicle obstacles
         max_vehicle_distance = self._base_vehicle_threshold + self._speed_ratio * vehicle_speed
@@ -207,10 +302,117 @@ class BasicAgent(object):
         if affected_by_tlight:
             hazard_detected = True
 
-        control = self._local_planner.run_step()
+        # Create state for frenet planner
+        acc_vec = self._local_planner._vehicle.get_acceleration()
+        acc = math.sqrt(acc_vec.x ** 2 + acc_vec.y ** 2 + acc_vec.z ** 2)
+        temp = [self._local_planner._vehicle.get_velocity(), self._local_planner._vehicle.get_acceleration()]
+        speed = vehicle_speed
+        psi = math.radians(self._local_planner._vehicle.get_transform().rotation.yaw)
+        self.max_s = 20
+        set_spd = 20
+        ego_state = [self._local_planner._vehicle.get_location().x, self._local_planner._vehicle.get_location().y,psi, 0, 0, temp, self.max_s]
+
+        # # Transform x,y to EGO frame
+        map_lanes_ego = torch.zeros_like(self.map_lanes)
+        map_lanes_ego[0:1,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[0:1,:,:], velocity=False)
+        map_lanes_ego[1:2,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[1:2,:,:], velocity=False)
+        map_lanes_ego[2:,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[2:,:,:], velocity=False)
+        
+        map_lanes_ego = map_lanes_ego.unsqueeze(0).unsqueeze(0)
+        # if map_lanes_ego[0,0,0,-1,0] == 0.0 and map_lanes_ego[0,0,0,-1,0] == 0.0:
+        #     map_lanes_ego = map_lanes_ego.flip(dims=(-2,))
+        fpath_idx, fplist = get_frenet_traj(map_lanes_ego, [0,0,0, temp[0].x, temp[0].y])
+        
+        # plt.cla()
+        # plt.scatter(map_lanes_ego[...,0,:,1], map_lanes_ego[...,0,:,0])
+        # # leg.extend(["Global path"])
+        # plt.scatter(map_lanes_ego[...,1,:,1], map_lanes_ego[...,1,:,0])
+        # plt.scatter(map_lanes_ego[...,2,:,1], map_lanes_ego[...,2,:,0])
+        # for i, p in enumerate(fplist):
+        #     plt.scatter(p[:,1], p[:,0], s=0.2)
+
+        for fp_ego in fplist:
+            path =fp_ego[:, :3]
+            data = egocentric_to_global(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), path, velocity=False)
+            fp_ego[:,0] = data[:,0]
+            fp_ego[:,1] = data[:,1]
+            fp_ego[:,2] = data[:,2]
+        # mfpath, lanechange, off_the_road = self.frenet_planner.run_step_single_path(ego_state, 0, df_n=0, Tf=5,Vf_n=set_spd)        
+        # wps_to_go = len(mfpath.t) - 3 
+        # print("wps_to_go", wps_to_go)
+        # while self.f_idx < 10:
+        # acc_vec = self._local_planner._vehicle.get_acceleration()
+        # temp = [self._local_planner._vehicle.get_velocity(), self._local_planner._vehicle.get_acceleration()]
+        # psi = math.radians(self._local_planner._vehicle.get_transform().rotation.yaw)
+        # ego_state = [self._local_planner._vehicle.get_location().x, self._local_planner._vehicle.get_location().y, psi, 0, 0, temp, self.max_s]
+        # self.f_idx = closest_wp_idx(ego_state,mfpath, 0)
+        # fpath, fplist = self.frenet_planner.run_step(ego_state, 0, change_lane=0, target_speed=set_spd)
+        # closest point between ego state and global path
+        best_idx = 6
+        try:
+            cmdWP2 = [fplist[fpath_idx][best_idx,0], fplist[fpath_idx][best_idx,1]]
+            # cmdWP2 = [lane[...,3,0], lane[...,3,1]]
+        except IndexError:
+            self.done()
+            control = carla.VehicleControl()
+            control.brake = self._local_planner._max_brake
+            return control
+        
+        loc = carla.libcarla.Location()
+        loc.x = cmdWP2[0].item()
+        loc.y = cmdWP2[1].item()
+        frenet_loc = self._local_planner._map.get_waypoint(loc)
+
+        # Plotting
+        plt.cla()
+        leg = []
+        plt.scatter(self.map_lanes[...,0,:,1], self.map_lanes[...,0,:,0])
+        leg.extend(["Global path"])
+
+        plt.scatter(self.map_lanes[...,1,:,1], self.map_lanes[...,1,:,0])
+        plt.scatter(self.map_lanes[...,2,:,1], self.map_lanes[...,2,:,0])
+        for i, p in enumerate(fplist):
+            plt.plot(p[:,1], p[:,0])#, s=0.2)
+        #     leg.append([f"candidate:{i}"])
+        # # Add index as text to each point in scatter plot
+        # for i, (x, y) in enumerate(zip(self.xx, self.yy)):
+        #     plt.text(y,x, str(i), fontsize=8)
+        plt.scatter(fplist[fpath_idx][:,1], fplist[fpath_idx][:,0], s=0.2)
+        leg.extend(["Main path"])
+        plt.scatter(ego_state[1],ego_state[0], marker="x")
+        # if ego_state != None:
+        #     # Plot a triangle with position and orientation
+        #     plt.quiver(ego_state[1], ego_state[0], math.sin(ego_state[2]), math.cos(ego_state[2]), color="black", scale=20, width=0.01)
+        plt.scatter(cmdWP2[1], cmdWP2[0], marker="o", color="black")
+        # plt.xlim([-30 + ego_state[1], 30 + ego_state[1]])
+        # plt.ylim([-30 + ego_state[0], 30 + ego_state[0]])
+        plt.legend(leg)
+        plt.pause(0.01)
+    
+        # loc = self.frenet_planner.estimate_frenet_state(ego_state, 0)
+        # frenet_loc = carla.libcarla.Waypoint
+        # frenet_loc.transform = carla.libcarla.Transform()
+        # frenet_loc.transform.location = carla.libcarla.Location(x = fpath.x[0], y = fpath.y[0])
+        # frenet_loc.transform.rotation = carla.libcarla.Rotation(yaw = fpath.yaw[0])
+
+        # loc = carla.Location(x = path.x[0], y = path.y[0], z = 0)
+        # control = self.vehicleController.run_step_2_wp(30 / 3.6, cmdWP, cmdWP2)  # calculate control
+        control = self._local_planner._vehicle_controller.run_step(self._target_speed, frenet_loc)
+        # print((fplist[fpath_idx][best_idx,3]))
+        # if debug:
+        # for p in fplist:
+        #     wps = []
+        #     for i in range(len(p.x)):
+        #         loc = carla.libcarla.Location()
+        #         loc.x = p.x[i]
+        #         loc.y = p.y[i]
+        #         wps.append(self._local_planner._map.get_waypoint(loc))
+        #     draw_waypoints(self._vehicle.get_world(), wps, 1.0)
+
         if hazard_detected:
             control = self.add_emergency_stop(control)
 
+        # self._vehicle.apply_control(control)
         return control
 
     def done(self):

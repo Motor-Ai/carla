@@ -170,6 +170,7 @@ class World(object):
                 sys.exit(1)
             spawn_points = self.map.get_spawn_points()
             spawn_point = random.choice(spawn_points) if spawn_points else carla.Transform()
+            # spawn_point = spawn_points[0] # MANGAL
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
             self.modify_vehicle_physics(self.player)
 
@@ -752,6 +753,7 @@ def game_loop(args):
         # Set the agent destination
         spawn_points = world.map.get_spawn_points()
         destination = random.choice(spawn_points).location
+        # destination = spawn_points[-1].location #Mangal
         agent.set_destination(destination)
 
         clock = pygame.time.Clock()
@@ -834,8 +836,8 @@ def main():
     argparser.add_argument(
         '--filter',
         metavar='PATTERN',
-        default='vehicle.*',
-        help='Actor filter (default: "vehicle.*")')
+        default='vehicle.lincoln.*',
+        help='Actor filter (default: "vehicle.lincoln.*")')
     argparser.add_argument(
         '--generation',
         metavar='G',
@@ -850,7 +852,7 @@ def main():
         "-a", "--agent", type=str,
         choices=["Behavior", "Basic", "Constant"],
         help="select which agent to run",
-        default="Behavior")
+        default="Basic")
     argparser.add_argument(
         '-b', '--behavior', type=str,
         choices=["cautious", "normal", "aggressive"],
