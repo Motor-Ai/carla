@@ -103,7 +103,6 @@ class BasicAgent(object):
 
         # Initialize the planners
         self._local_planner = LocalPlanner(self._vehicle, opt_dict=opt_dict, map_inst=self._map)
-        self.frenet_planner = FrenetPlanner()
 
         if grp_inst:
             if isinstance(grp_inst, GlobalRoutePlanner):
@@ -234,26 +233,6 @@ class BasicAgent(object):
             self.map_lanes[i,:,0] = torch.tensor(tx)
             self.map_lanes[i,:,1] = torch.tensor(ty)
             self.map_lanes[i,:,2] = torch.tensor(tyaw)
-        # path_len = 100
-        # x,y,yaw,k = calc_bspline_course_2(wp_x, wp_y, path_len,output_res=0.5)
-        
-        # # check for nans in x and y
-        # if np.any(np.isnan(x)) or np.any(np.isnan(y)) or x ==[] or y ==[]:
-        #     print("nan in x and y. Possible local planner error")
-        #     raise ValueError
-
-        # Construct Cubic Spline
-        # self.frenet_planner.update_global_route(zip(x,y))
-        # generate a single path
-        # self.frenet_planner.reset(0, 0, df_n=0, Tf=50, Vf_n=30 / 3.6, optimal_path=False)
-        
-        # temp = [self._vehicle.get_velocity(), self._vehicle.get_acceleration()]
-        # speed = get_speed(self._vehicle)
-        # acc_vec = self._vehicle.get_acceleration()
-        # acc = math.sqrt(acc_vec.x ** 2 + acc_vec.y ** 2 + acc_vec.z ** 2)
-        # psi = math.radians(self._vehicle.get_transform().rotation.yaw)
-        # ego_state = [self._vehicle.get_location().x, self._vehicle.get_location().y, speed, acc, psi, temp, 10]
-        # self.frenet_planner.run_step_single_path(ego_state, idx = 1 )
 
 
     def set_global_plan(self, plan, stop_waypoint_creation=True, clean_queue=True):
@@ -312,52 +291,57 @@ class BasicAgent(object):
         set_spd = 20
         ego_state = [self._local_planner._vehicle.get_location().x, self._local_planner._vehicle.get_location().y,psi, 0, 0, temp, self.max_s]
 
-        # # Transform x,y to EGO frame
+        # Transform lanes to EGO frame
         map_lanes_ego = torch.zeros_like(self.map_lanes)
         map_lanes_ego[0:1,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[0:1,:,:], velocity=False)
         map_lanes_ego[1:2,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[1:2,:,:], velocity=False)
         map_lanes_ego[2:,:,:] = global_to_egocentric(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), self.map_lanes[2:,:,:], velocity=False)
         
         map_lanes_ego = map_lanes_ego.unsqueeze(0).unsqueeze(0)
-        # if map_lanes_ego[0,0,0,-1,0] == 0.0 and map_lanes_ego[0,0,0,-1,0] == 0.0:
-        #     map_lanes_ego = map_lanes_ego.flip(dims=(-2,))
-        fpath_idx, fplist = get_frenet_traj(map_lanes_ego, [0,0,0, temp[0].x, temp[0].y])
-        
-        # plt.cla()
-        # plt.scatter(map_lanes_ego[...,0,:,1], map_lanes_ego[...,0,:,0])
-        # # leg.extend(["Global path"])
-        # plt.scatter(map_lanes_ego[...,1,:,1], map_lanes_ego[...,1,:,0])
-        # plt.scatter(map_lanes_ego[...,2,:,1], map_lanes_ego[...,2,:,0])
-        # for i, p in enumerate(fplist):
-        #     plt.scatter(p[:,1], p[:,0], s=0.2)
 
+        # Consider only the path from the ego vehicle
+        path = np.abs(
+            np.array(
+                [
+                    map_lanes_ego[0, 0, 0, :, 0].cpu().detach().numpy(),
+                    map_lanes_ego[0, 0, 0, :, 1].cpu().detach().numpy(),
+                ]
+            ).T
+        )
+
+        idx = np.argmin(np.hypot(path[:, 0], path[:, 1]))
+        map_lanes_ego = map_lanes_ego[:,:,:, idx:]
+
+        # Continue only if the length of the remaining path is greater than 1
+        if map_lanes_ego.shape[-2] < 2:
+            # Clear the waypoint queue, so that the controller kknows the goal is reached
+            self._local_planner._waypoints_queue.clear()
+            self.done()
+            control = carla.VehicleControl()
+            control.brake = self._local_planner._max_brake
+            return control
+
+        # Get frenet trajectories
+        fpath_idx, fplist = get_frenet_traj(map_lanes_ego, [0,0,0, temp[0].x, temp[0].y])
+
+        # Transform trajectories to global frame
         for fp_ego in fplist:
             path =fp_ego[:, :3]
             data = egocentric_to_global(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), path, velocity=False)
             fp_ego[:,0] = data[:,0]
             fp_ego[:,1] = data[:,1]
             fp_ego[:,2] = data[:,2]
-        # mfpath, lanechange, off_the_road = self.frenet_planner.run_step_single_path(ego_state, 0, df_n=0, Tf=5,Vf_n=set_spd)        
-        # wps_to_go = len(mfpath.t) - 3 
-        # print("wps_to_go", wps_to_go)
-        # while self.f_idx < 10:
-        # acc_vec = self._local_planner._vehicle.get_acceleration()
-        # temp = [self._local_planner._vehicle.get_velocity(), self._local_planner._vehicle.get_acceleration()]
-        # psi = math.radians(self._local_planner._vehicle.get_transform().rotation.yaw)
-        # ego_state = [self._local_planner._vehicle.get_location().x, self._local_planner._vehicle.get_location().y, psi, 0, 0, temp, self.max_s]
-        # self.f_idx = closest_wp_idx(ego_state,mfpath, 0)
-        # fpath, fplist = self.frenet_planner.run_step(ego_state, 0, change_lane=0, target_speed=set_spd)
-        # closest point between ego state and global path
-        best_idx = 6
-        try:
-            cmdWP2 = [fplist[fpath_idx][best_idx,0], fplist[fpath_idx][best_idx,1]]
-            # cmdWP2 = [lane[...,3,0], lane[...,3,1]]
-        except IndexError:
-            self.done()
-            control = carla.VehicleControl()
-            control.brake = self._local_planner._max_brake
-            return control
+
+        best_idx = 6 #TODO: Choose the best intention point
+        # try:
+        cmdWP2 = [fplist[fpath_idx][best_idx,0], fplist[fpath_idx][best_idx,1]]
+        # except IndexError:
+        #     self.done()
+        #     control = carla.VehicleControl()
+        #     control.brake = self._local_planner._max_brake
+        #     return control
         
+        # Get frenet location in waypoint datastructure
         loc = carla.libcarla.Location()
         loc.x = cmdWP2[0].item()
         loc.y = cmdWP2[1].item()
@@ -373,7 +357,7 @@ class BasicAgent(object):
         plt.scatter(self.map_lanes[...,2,:,1], self.map_lanes[...,2,:,0])
         for i, p in enumerate(fplist):
             plt.plot(p[:,1], p[:,0])#, s=0.2)
-        #     leg.append([f"candidate:{i}"])
+            leg.append([f"candidate:{i}"])
         # # Add index as text to each point in scatter plot
         # for i, (x, y) in enumerate(zip(self.xx, self.yy)):
         #     plt.text(y,x, str(i), fontsize=8)
@@ -389,30 +373,11 @@ class BasicAgent(object):
         plt.legend(leg)
         plt.pause(0.01)
     
-        # loc = self.frenet_planner.estimate_frenet_state(ego_state, 0)
-        # frenet_loc = carla.libcarla.Waypoint
-        # frenet_loc.transform = carla.libcarla.Transform()
-        # frenet_loc.transform.location = carla.libcarla.Location(x = fpath.x[0], y = fpath.y[0])
-        # frenet_loc.transform.rotation = carla.libcarla.Rotation(yaw = fpath.yaw[0])
-
-        # loc = carla.Location(x = path.x[0], y = path.y[0], z = 0)
-        # control = self.vehicleController.run_step_2_wp(30 / 3.6, cmdWP, cmdWP2)  # calculate control
-        control = self._local_planner._vehicle_controller.run_step(self._target_speed, frenet_loc)
-        # print((fplist[fpath_idx][best_idx,3]))
-        # if debug:
-        # for p in fplist:
-        #     wps = []
-        #     for i in range(len(p.x)):
-        #         loc = carla.libcarla.Location()
-        #         loc.x = p.x[i]
-        #         loc.y = p.y[i]
-        #         wps.append(self._local_planner._map.get_waypoint(loc))
-        #     draw_waypoints(self._vehicle.get_world(), wps, 1.0)
+        control = self._local_planner._vehicle_controller.run_step(20, frenet_loc)
 
         if hazard_detected:
             control = self.add_emergency_stop(control)
 
-        # self._vehicle.apply_control(control)
         return control
 
     def done(self):

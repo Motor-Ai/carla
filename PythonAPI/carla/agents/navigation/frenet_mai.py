@@ -113,18 +113,6 @@ def get_frenet_traj(map_lanes, ego_pos):
         #     map_lanes.size(4),
         # )
         map_lanes_nz = map_lanes
-        # Consider only the path from the ego vehicle
-        path = np.abs(
-            np.array(
-                [
-                    map_lanes_nz[0, 0, 0, :, 0].cpu().detach().numpy(),
-                    map_lanes_nz[0, 0, 0, :, 1].cpu().detach().numpy(),
-                ]
-            ).T
-        )
-        # idx = np.argmin(np.hypot(path[...,:, 0], path[...,:, 1]))
-        idx = np.argmin(np.hypot(path[:, 0], path[:, 1]))
-        map_lanes_nz = map_lanes_nz[:, :, :, idx:]
 
         x_lane = map_lanes_nz[0, 0, :, :, 0].cpu().detach().numpy()
         y_lane = map_lanes_nz[0, 0, :, :, 1].cpu().detach().numpy()
