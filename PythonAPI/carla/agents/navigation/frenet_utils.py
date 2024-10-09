@@ -161,7 +161,7 @@ def check_collision_dynamic(fplist, dynamic_ob, ego_x, ego_y):
 
 
 
-def check_dynamic_collision(self, fp, fp_path_time, fp_path_time_tick):
+def check_dynamic_collision(fp, fp_path_time, fp_path_time_tick):
     time_of_path = 0.0
     for i in range(len(fp.dynamic_collision)):
         if fp.dynamic_collision[i] == False:
@@ -175,14 +175,14 @@ def check_dynamic_collision(self, fp, fp_path_time, fp_path_time_tick):
         return False
 
 
-def check_paths(self, fplist, fp_path_time, fp_path_time_tick):
+def check_paths(fplist, fp_path_time, fp_path_time_tick):
     ok_ind = []
     for i, _ in enumerate(fplist):
-        if not check_dynamic_collision(self, fplist[i], fp_path_time, fp_path_time_tick):
-            self.get_logger().debug('Path ID: ' + str(i) + " eliminated due to Dynamic Obstacle")
+        if not check_dynamic_collision(fplist[i], fp_path_time, fp_path_time_tick):
+            print('Path ID: ' + str(i) + " eliminated due to Dynamic Obstacle")
             continue
         elif fplist[i].s[-1] < 1.5:  # PathLength check
-            self.get_logger().debug('Path ID: ' + str(i) + " eliminated due to path_length being too short")
+            print('Path ID: ' + str(i) + " eliminated due to path_length being too short")
             continue
 
         ok_ind.append(i)

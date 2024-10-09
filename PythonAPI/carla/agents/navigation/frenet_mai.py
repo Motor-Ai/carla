@@ -277,16 +277,16 @@ def get_frenet_traj(map_lanes, ego_pos):
             fplist_all.append(fplist[0])
         fplist = fplist_all
 
-        ## Compares all calculated paths with Obstacles Prediction Data
-        # fplist = fp_helper.check_collision_dynamic(
-        #     fplist,
-        #     dynamic_ob=[],
-        #     ego_x=ego_pos[0],
-        #     ego_y=ego_pos[1],
-        # )
+        # Compares all calculated paths with Obstacles Prediction Data
+        fplist = fp_helper.check_collision_dynamic(
+            fplist,
+            dynamic_ob=[],
+            ego_x=ego_pos[0],
+            ego_y=ego_pos[1],
+        )
 
-        # ## Filter out paths based on curvature limit, obstacle collision
-        # fplist = fp_helper.check_paths(self, fplist, 15.0, 0.5)
+        ## Filter out paths based on curvature limit, obstacle collision
+        fplist = fp_helper.check_paths(fplist, (40 * 0.1), (20 * 0.01))
 
         batch_size = 5  # No. of Manuvers
 
@@ -319,13 +319,13 @@ def get_frenet_traj(map_lanes, ego_pos):
         # maneuver_traj_history = self.maneuver_traj_history[-frenet_points:]
             ## Compares all calculated paths with Obstacles Prediction Data
 
-            # find minimum cost path
-            min_cost = float("inf")
-            best_path_idx = None
-            for i,fp in enumerate(fplist):
-                if min_cost >= fp.cf:
-                    min_cost = fp.cf
-                    best_path_idx = i
+        # find minimum cost path
+        min_cost = float("inf")
+        best_path_idx = None
+        for i,fp in enumerate(fplist):
+            if min_cost >= fp.cf:
+                min_cost = fp.cf
+                best_path_idx = i
 
         if torch.any(torch.isnan(frenet_trajectories)):
             print(frenet_trajectories)
