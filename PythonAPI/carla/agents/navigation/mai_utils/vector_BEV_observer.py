@@ -14,11 +14,10 @@ from time import sleep
 # PATH = os.path.dirname(os.path.realpath(__file__)).split("train")[0]
 # sys.path.append(PATH)
 
-from carla import ad
-from feature_indices import agent_feat_id
-from traffic_sign_db import traffic_feat_idx
+from agents.navigation.mai_utils.feature_indices import agent_feat_id
+from agents.navigation.mai_utils.traffic_sign_db import traffic_feat_idx
 
-matplotlib.use("Agg")
+# matplotlib.use("Agg")
 
 RSS_NOT_FOUND_VALUE = -100.0
 

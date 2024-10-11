@@ -16,7 +16,7 @@ import numpy as np
 import copy
 import math
 import copy
-from agents.navigation import cubic_spline_planner
+from agents.navigation.frenet import cubic_spline_planner
 from agents.navigation.config import cfg
 import matplotlib.pyplot as plt
 

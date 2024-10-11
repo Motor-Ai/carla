@@ -2,7 +2,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from shapely.geometry import Polygon
-import agents.navigation.frenet_polynomials as fp_class
+import agents.navigation.frenet.frenet_polynomials as fp_class
 
 
 def calc_frenet_paths(c_speed, c_d, c_d_d, c_d_dd, s0, fp_params):

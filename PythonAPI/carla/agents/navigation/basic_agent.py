@@ -18,13 +18,15 @@ import math
 import matplotlib
 matplotlib.use('TKAgg', force=True)
 import numpy as np
-import  agents.navigation.cubic_spline_planner as cp
+import  agents.navigation.frenet.cubic_spline_planner as cp
 from agents.navigation.local_planner import LocalPlanner, RoadOption
-from agents.navigation.frenet_optimal_trajectory import FrenetPlanner
-from agents.navigation.frenet_optimal_trajectory import closest_wp_idx
-from agents.navigation.cubic_spline_planner import calc_bspline_course_2
+from agents.navigation.frenet.frenet_optimal_trajectory import FrenetPlanner
+from agents.navigation.frenet.frenet_optimal_trajectory import closest_wp_idx
+from agents.navigation.frenet.cubic_spline_planner import calc_bspline_course_2
 from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.navigation.frenet_mai import get_frenet_traj, global_to_egocentric, egocentric_to_global
+from agents.navigation.frenet.frenet_mai import get_frenet_traj, global_to_egocentric, egocentric_to_global
+from agents.navigation.mai_utils.vector_BEV_observer import Vector_BEV_observer
+
 # from agents.navigation.controller import VehiclePIDController+
 from agents.navigation.mpc.mpc_node import mpcControlNode
 from agents.tools.misc import (get_speed, is_within_distance,
@@ -78,7 +80,7 @@ class BasicAgent(object):
         self._offset = 0
         self.f_idx = 0
         self.vehicle_controller = mpcControlNode()
-
+        self.bev_observer = Vector_BEV_observer()
         # Change parameters according to the dictionary
         opt_dict['target_speed'] = target_speed
         if 'ignore_traffic_lights' in opt_dict:
@@ -317,6 +319,7 @@ class BasicAgent(object):
         if map_lanes_ego.shape[-2] < 2:
             # Clear the waypoint queue, so that the controller kknows the goal is reached
             self._local_planner._waypoints_queue.clear()
+            self.bev_observer.save_file(re_reference=False, file_name="test")
             self.done()
             control = carla.VehicleControl()
             control.brake = self._local_planner._max_brake
@@ -379,9 +382,10 @@ class BasicAgent(object):
         # ego_ctrl= []
         # ego_control = self._local_planner._vehicle.get_control()
         # ego_ctrl.extend([ego_control.brake, ego_control.steer, ego_control.throttle])
-    
         # control = self.vehicle_controller.mpc_main(ego_state, fplist[fpath_idx], ego_ctrl)
 
+        if self.bev_observer.client_init(world=self._world):
+            self.bev_observer.update(plot=False, re_reference=False)
         if hazard_detected:
             control = self.add_emergency_stop(control)
 

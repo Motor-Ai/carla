@@ -149,7 +149,7 @@ class World(object):
         if not blueprint_list:
             raise ValueError("Couldn't find any blueprints with the specified filters")
         blueprint = random.choice(blueprint_list)
-        blueprint.set_attribute('role_name', 'hero')
+        blueprint.set_attribute('role_name', 'ego_vehicle')
         if blueprint.has_attribute('color'):
             color = random.choice(blueprint.get_attribute('color').recommended_values)
             blueprint.set_attribute('color', color)
