@@ -25,7 +25,8 @@ from agents.navigation.frenet_optimal_trajectory import closest_wp_idx
 from agents.navigation.cubic_spline_planner import calc_bspline_course_2
 from agents.navigation.global_route_planner import GlobalRoutePlanner
 from agents.navigation.frenet_mai import get_frenet_traj, global_to_egocentric, egocentric_to_global
-# from agents.navigation.controller import VehiclePIDController
+# from agents.navigation.controller import VehiclePIDController+
+from agents.navigation.mpc.mpc_node import mpcControlNode
 from agents.tools.misc import (get_speed, is_within_distance,
                                get_trafficlight_trigger_location,
                                compute_distance)
@@ -76,7 +77,7 @@ class BasicAgent(object):
         self._max_brake = 0.5
         self._offset = 0
         self.f_idx = 0
-        # # self.vehicleController = VehiclePIDController(self._local_planner._vehicle, args_lateral={'K_P': 1.5, 'K_D': 0.0, 'K_I': 0.0})
+        self.vehicle_controller = mpcControlNode()
 
         # Change parameters according to the dictionary
         opt_dict['target_speed'] = target_speed
@@ -372,8 +373,14 @@ class BasicAgent(object):
         # plt.ylim([-30 + ego_state[0], 30 + ego_state[0]])
         plt.legend(leg)
         plt.pause(0.01)
-    
         control = self._local_planner._vehicle_controller.run_step(20, frenet_loc)
+
+        # # MPC
+        # ego_ctrl= []
+        # ego_control = self._local_planner._vehicle.get_control()
+        # ego_ctrl.extend([ego_control.brake, ego_control.steer, ego_control.throttle])
+    
+        # control = self.vehicle_controller.mpc_main(ego_state, fplist[fpath_idx], ego_ctrl)
 
         if hazard_detected:
             control = self.add_emergency_stop(control)
