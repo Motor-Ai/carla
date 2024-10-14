@@ -328,6 +328,10 @@ class BasicAgent(object):
         # Get frenet trajectories
         fpath_idx, fplist = get_frenet_traj(map_lanes_ego, [0,0,0, temp[0].x, temp[0].y])
 
+        if self.bev_observer.client_init(world=self._world):
+            self.bev_observer.update_traj(fplist, plot = False, re_reference = False)
+            self.bev_observer.update(plot=False, re_reference=False)
+
         # Transform trajectories to global frame
         for fp_ego in fplist:
             path =fp_ego[:, :3]
@@ -384,8 +388,6 @@ class BasicAgent(object):
         # ego_ctrl.extend([ego_control.brake, ego_control.steer, ego_control.throttle])
         # control = self.vehicle_controller.mpc_main(ego_state, fplist[fpath_idx], ego_ctrl)
 
-        if self.bev_observer.client_init(world=self._world):
-            self.bev_observer.update(plot=False, re_reference=False)
         if hazard_detected:
             control = self.add_emergency_stop(control)
 

@@ -34,6 +34,7 @@ class Vector_BEV_observer:
     ):
         # initialise buffer - no refernce
         self.ego_data = []
+        self.traj_data = []
         self.neighbor_data = []
         self.map_data = []
         self.ego_transform_data = []
@@ -502,6 +503,12 @@ class Vector_BEV_observer:
             #     np.asarray(map_lanes),
             # )
 
+    def update_traj(self, fplist, plot = True, re_reference = False):
+        # fplist in EGO Frame
+        self.traj_data.append(fplist)
+        if re_reference:
+            self.traj_data_l = self.traj_data[-(self.HISTORY + self.FUTURE_LEN) :]
+
     def get_rereferenced_chunk(self, plot=True):
         ego_hist = np.array(self.ego_data_l[: self.HISTORY])
         neighbor_hist = np.array(self.neighbor_data_l[: self.HISTORY])
@@ -561,22 +568,26 @@ class Vector_BEV_observer:
             ego = np.vstack(self.ego_data)[1:]
             neighbors  = np.concatenate(np.expand_dims(self.neighbor_data, axis=0))[1:]
             map = np.concatenate(np.expand_dims(self.map_data, axis=0))[1:]
+            traj_data = torch.stack(self.traj_data)[1:].cpu().numpy()
             ego, neighbors, map, ground_truth = self.create_buffer_and_transform_frame(ego, neighbors, map)
             print(f"Ego shape: {ego.shape}")
             print(f"Neighbors shape: {neighbors.shape}")
             print(f"Map shape: {map.shape}")
             print(f"Ground Truth shape: {ground_truth.shape}")
+            print(f"Frenet Trajectory shape: {traj_data.shape}")
             if selected_frame is not None:
                 ego=ego[selected_frame:selected_frame+1],
                 neighbors=neighbors[selected_frame:selected_frame+1],
                 map=map[selected_frame:selected_frame+1],
                 ground_truth=ground_truth[selected_frame:selected_frame+1]
+                traj_data=traj_data[selected_frame:selected_frame+1]
             np.savez(
                 f"{file_name}",
                 ego=ego,
                 neighbors=neighbors,
                 map=map,
-                ground_truth=ground_truth
+                ground_truth=ground_truth,
+                traj_data=traj_data
             )
         else:
             print(np.vstack(self.ego_hist).shape)
