@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2024-10-17 14:56:51.307693 by CommonRoad Scenario Designer UNKNOWN
+  options: 
+-->
+
+<types xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/types_file.xsd">
+  <type id="highway.motorway" disallow="rail rail_urban rail_electric tram ship pedestrian bicycle moped" oneway="true" priority="14" speed="39.44"/>
+  <type id="highway.motorway_link" disallow="rail rail_urban rail_electric tram ship pedestrian bicycle moped" oneway="true" priority="9" speed="22.22"/>
+  <type id="highway.trunk" disallow="rail rail_urban rail_electric tram ship pedestrian bicycle" priority="13" speed="27.78"/>
+  <type id="highway.trunk_link" disallow="rail rail_urban rail_electric tram ship pedestrian bicycle" priority="8" speed="22.22"/>
+  <type id="highway.primary" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="12" speed="27.78"/>
+  <type id="highway.primary_link" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="7" speed="22.22"/>
+  <type id="highway.secondary" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="11" speed="27.78"/>
+  <type id="highway.secondary_link" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="6" speed="22.22"/>
+  <type id="highway.tertiary" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="10" speed="22.22"/>
+  <type id="highway.tertiary_link" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="5" speed="22.22"/>
+  <type id="highway.unclassified" disallow="rail rail_urban rail_electric tram ship" priority="4" speed="13.89"/>
+  <type id="highway.residential" disallow="rail rail_urban rail_electric tram ship pedestrian" priority="3" speed="13.89"/>
+  <type id="highway.living_street" disallow="rail rail_urban rail_electric tram ship" priority="2" speed="2.78"/>
+  <type id="highway.unsurfaced" disallow="rail rail_urban rail_electric tram ship" priority="1" speed="8.33"/>
+  <type id="highway.service" allow="delivery pedestrian bicycle" priority="1" speed="5.56"/>
+  <type id="highway.track" allow="motorcycle moped pedestrian bicycle" priority="1" speed="5.56"/>
+  <type id="highway.footway" allow="pedestrian" oneway="true" priority="1" speed="2.78"/>
+  <type id="highway.pedestrian" allow="pedestrian" oneway="true" priority="1" speed="2.78"/>
+  <type id="highway.path" allow="pedestrian bicycle" priority="1" speed="2.78"/>
+  <type id="highway.bridleway" allow="pedestrian" oneway="true" priority="1" speed="2.78"/>
+  <type id="highway.cycleway" allow="bicycle" priority="1" speed="8.33"/>
+  <type id="highway.step" allow="pedestrian" oneway="true" priority="1" speed="1.39"/>
+  <type id="highway.steps" allow="pedestrian" oneway="true" priority="1" speed="1.39"/>
+  <type id="highway.stairs" allow="pedestrian" oneway="true" priority="1" speed="1.39"/>
+  <type id="highway.bus_guideway" allow="bus" oneway="true" priority="1" speed="27.78"/>
+  <type id="highway.raceway" allow="vip" priority="15" speed="83.33"/>
+  <type id="highway.ford" allow="army" priority="1" speed="2.78"/>
+  <type id="railway.rail" allow="rail" oneway="true" priority="20" speed="44.44"/>
+  <type id="railway.tram" allow="tram" oneway="true" priority="17" speed="13.89"/>
+  <type id="railway.light_rail" allow="rail_urban" oneway="true" priority="19" speed="27.78"/>
+  <type id="railway.subway" allow="rail_urban" oneway="true" priority="18" speed="27.78"/>
+  <type id="railway.preserved" allow="rail" oneway="true" priority="16" speed="27.78"/>
+  <type id="railway.highspeed" allow="rail" oneway="true" priority="21" speed="69.44"/>
+</types>
