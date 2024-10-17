@@ -340,7 +340,7 @@ class BasicAgent(object):
             fp_ego[:,1] = data[:,1]
             fp_ego[:,2] = data[:,2]
 
-        best_idx = 6 #TODO: Choose the best intention point
+        best_idx = 10 #TODO: Choose the best intention point
         # try:
         cmdWP2 = [fplist[fpath_idx][best_idx,0], fplist[fpath_idx][best_idx,1]]
         # except IndexError:

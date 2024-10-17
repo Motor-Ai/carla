@@ -721,6 +721,29 @@ def game_loop(args):
         client.set_timeout(60.0)
 
         traffic_manager = client.get_trafficmanager()
+        # TEGEL XODR MAP
+        # xodr_path = '/home/mangaldeep/workspace/carla/tegel_maps/Decision_tegel_map_18_04_2024.xodr'
+
+        # # Read the OpenDRIVE file
+        # with open(xodr_path, 'r') as od_file:
+        #     xodr_data = od_file.read()
+
+        # # Load the OpenDRIVE map
+        # vertex_distance = 2.0  # in meters
+        # max_road_length = 50.0  # in meters
+        # wall_height = 0.0  # in meters
+        # extra_width = 2.0  # in meters
+        # world = client.generate_opendrive_world(
+        #     xodr_data, carla.OpendriveGenerationParameters(
+        #         vertex_distance=vertex_distance,
+        #         max_road_length=max_road_length,
+        #         wall_height=wall_height,
+        #         additional_width=extra_width,
+        #         smooth_junctions=True,
+        #         enable_mesh_visibility=True
+        #     )
+        # )
+        
         sim_world = client.get_world()
 
         if args.sync:
