@@ -11,6 +11,7 @@ It can also make use of the global route planner to follow a specifed route
 
 import carla
 import torch
+import time
 import matplotlib.pyplot as plt
 import carla.libcarla
 from shapely.geometry import Polygon
@@ -67,7 +68,7 @@ class BasicAgent(object):
         self._last_traffic_light = None
 
         # Base parameters
-        self._ignore_traffic_lights = False
+        self._ignore_traffic_lights = True
         self._ignore_stop_signs = False
         self._ignore_vehicles = False
         self._use_bbs_detection = False
@@ -317,9 +318,10 @@ class BasicAgent(object):
 
         # Continue only if the length of the remaining path is greater than 1
         if map_lanes_ego.shape[-2] < 2:
+            map_name = self._local_planner._map.name.split('/')[-1]
             # Clear the waypoint queue, so that the controller kknows the goal is reached
             self._local_planner._waypoints_queue.clear()
-            self.bev_observer.save_file(re_reference=False, file_name="test")
+            self.bev_observer.save_file(re_reference=False, file_name=f"CARLA_FrenetTraj_{map_name}_{str(time.time_ns())}")
             self.done()
             control = carla.VehicleControl()
             control.brake = self._local_planner._max_brake
@@ -328,8 +330,9 @@ class BasicAgent(object):
         # Get frenet trajectories
         fpath_idx, fplist = get_frenet_traj(map_lanes_ego, [0,0,0, temp[0].x, temp[0].y])
 
+        frent_traj = fplist.detach().clone()
         if self.bev_observer.client_init(world=self._world):
-            self.bev_observer.update_traj(fplist, plot = False, re_reference = False)
+            self.bev_observer.update_traj(frent_traj, plot = False, re_reference = False)
             self.bev_observer.update(plot=False, re_reference=False)
 
         # Transform trajectories to global frame
@@ -340,7 +343,7 @@ class BasicAgent(object):
             fp_ego[:,1] = data[:,1]
             fp_ego[:,2] = data[:,2]
 
-        best_idx = 10 #TODO: Choose the best intention point
+        best_idx = 6 #TODO: Choose the best intention point
         # try:
         cmdWP2 = [fplist[fpath_idx][best_idx,0], fplist[fpath_idx][best_idx,1]]
         # except IndexError:
@@ -356,30 +359,31 @@ class BasicAgent(object):
         frenet_loc = self._local_planner._map.get_waypoint(loc)
 
         # Plotting
-        plt.cla()
-        leg = []
-        plt.scatter(self.map_lanes[...,0,:,1], self.map_lanes[...,0,:,0])
-        leg.extend(["Global path"])
+        if True:
+            plt.cla()
+            leg = []
+            plt.scatter(self.map_lanes[...,0,:,1], self.map_lanes[...,0,:,0])
+            leg.extend(["Global path"])
 
-        plt.scatter(self.map_lanes[...,1,:,1], self.map_lanes[...,1,:,0])
-        plt.scatter(self.map_lanes[...,2,:,1], self.map_lanes[...,2,:,0])
-        for i, p in enumerate(fplist):
-            plt.plot(p[:,1], p[:,0])#, s=0.2)
-            leg.append([f"candidate:{i}"])
-        # # Add index as text to each point in scatter plot
-        # for i, (x, y) in enumerate(zip(self.xx, self.yy)):
-        #     plt.text(y,x, str(i), fontsize=8)
-        plt.scatter(fplist[fpath_idx][:,1], fplist[fpath_idx][:,0], s=0.2)
-        leg.extend(["Main path"])
-        plt.scatter(ego_state[1],ego_state[0], marker="x")
-        # if ego_state != None:
-        #     # Plot a triangle with position and orientation
-        #     plt.quiver(ego_state[1], ego_state[0], math.sin(ego_state[2]), math.cos(ego_state[2]), color="black", scale=20, width=0.01)
-        plt.scatter(cmdWP2[1], cmdWP2[0], marker="o", color="black")
-        # plt.xlim([-30 + ego_state[1], 30 + ego_state[1]])
-        # plt.ylim([-30 + ego_state[0], 30 + ego_state[0]])
-        plt.legend(leg)
-        plt.pause(0.01)
+            plt.scatter(self.map_lanes[...,1,:,1], self.map_lanes[...,1,:,0])
+            plt.scatter(self.map_lanes[...,2,:,1], self.map_lanes[...,2,:,0])
+            for i, p in enumerate(fplist):
+                plt.plot(p[:,1], p[:,0])#, s=0.2)
+                leg.append([f"candidate:{i}"])
+            # # Add index as text to each point in scatter plot
+            # for i, (x, y) in enumerate(zip(self.xx, self.yy)):
+            #     plt.text(y,x, str(i), fontsize=8)
+            plt.scatter(fplist[fpath_idx][:,1], fplist[fpath_idx][:,0], s=0.2)
+            leg.extend(["Main path"])
+            plt.scatter(ego_state[1],ego_state[0], marker="x")
+            # if ego_state != None:
+            #     # Plot a triangle with position and orientation
+            #     plt.quiver(ego_state[1], ego_state[0], math.sin(ego_state[2]), math.cos(ego_state[2]), color="black", scale=20, width=0.01)
+            plt.scatter(cmdWP2[1], cmdWP2[0], marker="o", color="black")
+            # plt.xlim([-30 + ego_state[1], 30 + ego_state[1]])
+            # plt.ylim([-30 + ego_state[0], 30 + ego_state[0]])
+            plt.legend(leg)
+            plt.pause(0.01)
         control = self._local_planner._vehicle_controller.run_step(20, frenet_loc)
 
         # # MPC

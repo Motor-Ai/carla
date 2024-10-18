@@ -14,7 +14,7 @@ from time import sleep
 # PATH = os.path.dirname(os.path.realpath(__file__)).split("train")[0]
 # sys.path.append(PATH)
 
-from agents.navigation.mai_utils.feature_indices import agent_feat_id
+from agents.navigation.mai_utils.feature_indices import agent_feat_id, rss_feat_id
 from agents.navigation.mai_utils.traffic_sign_db import traffic_feat_idx
 
 # matplotlib.use("Agg")
@@ -183,21 +183,21 @@ class Vector_BEV_observer:
     def global_to_egocentric(self, data, ego):
         data = np.asarray(data)
         data_mask = np.where(data == 0, 0, 1)
-        x_e, y_e, yaw_ego = ego
+        x_e, y_e, yaw_ego = ego[agent_feat_id["x"]], ego[agent_feat_id["y"]], ego[agent_feat_id["yaw"]]
         # Translate the global position relative to the ego
-        dx = data[..., 0] - x_e
-        dy = data[..., 1] - y_e
+        dx = data[..., agent_feat_id['x']] - x_e
+        dy = data[..., agent_feat_id['y']] - y_e
         # Rotation matrix for the ego's heading (convert to local coordinates)
         cos_ego = np.cos(-yaw_ego)
         sin_ego = np.sin(-yaw_ego)
         # Apply the rotation to the translated position
-        data[..., 0] = cos_ego * dx - sin_ego * dy
-        data[..., 1] = sin_ego * dx + cos_ego * dy
+        data[..., agent_feat_id['x']] = cos_ego * dx - sin_ego * dy
+        data[..., agent_feat_id['y']] = sin_ego * dx + cos_ego * dy
         
         # Adjust the heading to be relative to the ego vehicle's heading
-        data[..., 2] = data[..., 2] - yaw_ego
+        data[..., agent_feat_id['yaw']] = data[..., agent_feat_id['yaw']] - yaw_ego
         # Ensure the heading is within -pi to pi
-        data[..., 2] = np.arctan2(np.sin(data[..., 2]), np.cos(data[..., 2]))
+        data[..., agent_feat_id['yaw']] = np.arctan2(np.sin(data[..., agent_feat_id['yaw']]), np.cos(data[..., agent_feat_id['yaw']]))
         return data * data_mask
 
     def get_ego_current_pos(self):
@@ -223,9 +223,9 @@ class Vector_BEV_observer:
         for wp in self.carla_map.get_topology():
             start_distance = wp[0].transform.location.distance(ego_location)
             end_distance = wp[1].transform.location.distance(ego_location)
-            # if start_distance < self.FOV or end_distance < self.FOV:
+            if start_distance < self.FOV or end_distance < self.FOV:
             # Add the starting waypoint of the lane and its distance to the list
-            lane_distances.append((min(start_distance, end_distance), wp[0])) #.next_until_lane_end(self.LANEPOINT_DIST)))
+                lane_distances.append((min(start_distance, end_distance), wp[0])) #.next_until_lane_end(self.LANEPOINT_DIST)))
 
         # Get n closest lanes
         n_closest_lanes = heapq.nsmallest(self.MAX_LANES, lane_distances, key=lambda x: x[0])
@@ -293,15 +293,15 @@ class Vector_BEV_observer:
                 points_s = np.asarray([wp.s for wp in lane])
                 points_road_id = np.asarray([wp.road_id for wp in lane])
                 points_lane_id =  np.asarray([wp.lane_id for wp in lane])
-                map_lanes[l, : points_s.shape[0], traffic_feat_idx["s"]] = (
-                    points_s[: self.MAX_LANE_LEN]
-                )
-                map_lanes[l, : points_road_id.shape[0], traffic_feat_idx["road_id"]] = (
-                    points_road_id[: self.MAX_LANE_LEN]
-                )
-                map_lanes[l, : points_lane_id.shape[0], traffic_feat_idx["lane_id"]] = (
-                    points_lane_id[: self.MAX_LANE_LEN]
-                )
+                # map_lanes[l, : points_s.shape[0], traffic_feat_idx["s"]] = (
+                #     points_s[: self.MAX_LANE_LEN]
+                # )
+                # map_lanes[l, : points_road_id.shape[0], traffic_feat_idx["road_id"]] = (
+                #     points_road_id[: self.MAX_LANE_LEN]
+                # )
+                # map_lanes[l, : points_lane_id.shape[0], traffic_feat_idx["lane_id"]] = (
+                #     points_lane_id[: self.MAX_LANE_LEN]
+                # )
 
                 # print(map_lanes)
         if self.lanelet_data is not None:
@@ -449,14 +449,14 @@ class Vector_BEV_observer:
                                 neighbor_location[i, agent_feat_id['rss_lat_safe_left_dist']] = RSS_NOT_FOUND_VALUE
                     else:
                         print("RSS states not found!")
-                        neighbor_location[i, agent_feat_id['rss_obj_id']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_status']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_long_current_dist']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_long_safe_dist']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_lat_current_right_dist']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_lat_safe_right_dist']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_lat_current_left_dist']] = RSS_NOT_FOUND_VALUE
-                        neighbor_location[i, agent_feat_id['rss_lat_safe_left_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_obj_id']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_status']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_long_current_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_long_safe_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_lat_current_right_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_lat_safe_right_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_lat_current_left_dist']] = RSS_NOT_FOUND_VALUE
+                        neighbor_location[i, rss_feat_id['rss_lat_safe_left_dist']] = RSS_NOT_FOUND_VALUE
 
                     neigh_closest_wp = self.carla_map.get_waypoint(actor.get_location(), project_to_road=True, lane_type=(carla.LaneType.Driving)) # TODO improve filtering
                     neighbor_location[i, agent_feat_id["road_id"]] = neigh_closest_wp.road_id
@@ -522,9 +522,10 @@ class Vector_BEV_observer:
         ego_hist = torch.tensor(ego_hist)
         neighbor_hist = torch.tensor(neighbor_hist)
         neighbor_hist = neighbor_hist.swapaxes(0, 1)
-        actors_hist = np.vstack(
-            [ego_hist[..., :3].unsqueeze(0), neighbor_hist[..., :3]]
-        )
+        # actors_hist = np.vstack(
+        #     [ego_hist[..., agent_feat_id['x']:agent_feat_id['yaw']+1].unsqueeze(0), 
+        #      neighbor_hist[..., agent_feat_id['x']:agent_feat_id['yaw']+1]]
+        # )
         for l in range(len(map_hist)):
             map_hist[l] = torch.tensor(
                 self.global_to_egocentric(np.asarray(map_hist[l]), self.ego_current)
@@ -561,26 +562,27 @@ class Vector_BEV_observer:
         map_hist = torch.tensor(np.stack(map_hist)).unsqueeze(0).unsqueeze(0).type(torch.float32)
         return ego_hist, neighbor_hist, map_hist, ground_truth
 
-    def save_file(self, re_reference=False, file_name=None, selected_frame=20): # TODO selected_frame should match history length!
+    def save_file(self, re_reference=False, file_name=None, selected_frame=None): # TODO selected_frame should match history length!
         if not re_reference:
-            print("no re_referencesave")
+            print("no re_reference save")
             # remove first entry since it's embigious
             ego = np.vstack(self.ego_data)[1:]
             neighbors  = np.concatenate(np.expand_dims(self.neighbor_data, axis=0))[1:]
             map = np.concatenate(np.expand_dims(self.map_data, axis=0))[1:]
             traj_data = torch.stack(self.traj_data)[1:].cpu().numpy()
-            ego, neighbors, map, ground_truth = self.create_buffer_and_transform_frame(ego, neighbors, map)
+            # traj_data = self.global_to_egocentric(traj_data, ego[-1, :3])
+            ego, neighbors, map, ground_truth, traj_bdata = self.create_buffer_and_transform_frame(ego, neighbors, map, traj_data)
             print(f"Ego shape: {ego.shape}")
             print(f"Neighbors shape: {neighbors.shape}")
             print(f"Map shape: {map.shape}")
             print(f"Ground Truth shape: {ground_truth.shape}")
-            print(f"Frenet Trajectory shape: {traj_data.shape}")
+            print(f"Frenet Trajectory shape: {traj_bdata.shape}")
             if selected_frame is not None:
                 ego=ego[selected_frame:selected_frame+1],
                 neighbors=neighbors[selected_frame:selected_frame+1],
                 map=map[selected_frame:selected_frame+1],
                 ground_truth=ground_truth[selected_frame:selected_frame+1]
-                traj_data=traj_data[selected_frame:selected_frame+1]
+                traj_data=traj_bdata[selected_frame:selected_frame+1]
             np.savez(
                 f"{file_name}",
                 ego=ego,
@@ -635,7 +637,7 @@ class Vector_BEV_observer:
             file_name=file_name,
         )
 
-    def create_buffer(self, ego, neighbors):  # create the buffer
+    def create_buffer(self, ego, neighbors, traj_data):  # create the buffer
         ego_buffer = np.zeros(
             [ego.shape[0], self.HISTORY + self.FUTURE_LEN, ego.shape[1]]
         )
@@ -647,6 +649,18 @@ class Vector_BEV_observer:
                 neighbors.shape[2],
             ]
         )
+        if traj_data is not None:
+            traj_buffer = np.zeros(
+                [
+                    traj_data.shape[0],
+                    self.HISTORY + self.FUTURE_LEN,
+                    traj_data.shape[1],
+                    traj_data.shape[2],
+                    traj_data.shape[3],
+                ]
+            )
+        else:
+            traj_buffer = None
         for frame_id in range(len(ego)):
             for time_id in range(self.HISTORY):
                 if frame_id - time_id >= 0:
@@ -656,8 +670,14 @@ class Vector_BEV_observer:
                     neighbors_buffer[frame_id, self.HISTORY - time_id - 1] = neighbors[
                         frame_id - time_id
                     ]
+                    if traj_data is not None:
+                        traj_buffer[frame_id, self.HISTORY - time_id - 1] = traj_data[
+                            frame_id - time_id
+                        ]
             ego_buffer[frame_id, self.HISTORY] = ego[frame_id]
             neighbors_buffer[frame_id, self.HISTORY] = neighbors[frame_id]
+            if traj_data is not None:
+                traj_buffer[frame_id, self.HISTORY] = traj_data[frame_id]
             for time_id in range(self.FUTURE_LEN):
                 if frame_id + time_id < len(ego):
                     ego_buffer[frame_id, self.HISTORY + time_id - 1] = ego[
@@ -666,28 +686,36 @@ class Vector_BEV_observer:
                     neighbors_buffer[frame_id, self.HISTORY + time_id - 1] = neighbors[
                         frame_id + time_id
                     ]
-        return ego_buffer, np.transpose(neighbors_buffer, (0, 2, 1, 3))
+                    if traj_data is not None:
+                        traj_buffer[frame_id, self.HISTORY + time_id - 1] = traj_data[
+                            frame_id + time_id
+                        ]
+        return ego_buffer, np.transpose(neighbors_buffer, (0, 2, 1, 3)), traj_buffer
 
-    def transform_global2ego_frame(self, ego_buffer, neighbors_buffer, map):
+    def transform_global2ego_frame(self, ego_buffer, neighbors_buffer, map, traj_buffer):
         # rereference the buffer, all features excluding rss and features afterward
         for frame_id in range(len(ego_buffer)):
             neighbors_buffer[frame_id][..., :9] = self.global_to_egocentric(
                 neighbors_buffer[frame_id][..., :9],
-                ego_buffer[frame_id, self.HISTORY - 1][..., :3],
+                ego_buffer[frame_id, self.HISTORY - 1],
             )
             map[frame_id] = self.global_to_egocentric(
-                map[frame_id], ego_buffer[frame_id, self.HISTORY - 1][..., :3]
+                map[frame_id], ego_buffer[frame_id, self.HISTORY - 1]
             )
             # important to transform ego after others
             ego_buffer[frame_id][..., :9] = self.global_to_egocentric(
-                ego_buffer[frame_id][..., :9], ego_buffer[frame_id, self.HISTORY - 1][..., :3]
+                ego_buffer[frame_id][..., :9], ego_buffer[frame_id, self.HISTORY - 1]
             )
-        return ego_buffer, neighbors_buffer, map
+            if traj_buffer is not None:
+                traj_buffer[frame_id] = self.global_to_egocentric(
+                    traj_buffer[frame_id], ego_buffer[frame_id, self.HISTORY - 1]
+                )
+        return ego_buffer, neighbors_buffer, map, traj_buffer
 
-    def create_buffer_and_transform_frame(self, ego, neighbors, map):
-        ego_buffer, neighbors_buffer = self.create_buffer(ego, neighbors)
-        ego_buffer, neighbors_buffer, map = self.transform_global2ego_frame(
-            ego_buffer, neighbors_buffer, map
+    def create_buffer_and_transform_frame(self, ego, neighbors, map, traj_data):
+        ego_buffer, neighbors_buffer, traj_buffer = self.create_buffer(ego, neighbors, traj_data)
+        ego_buffer, neighbors_buffer, map, traj_buffer = self.transform_global2ego_frame(
+            ego_buffer, neighbors_buffer, map, traj_buffer
         )
 
         # pad with zeros to match neighbors features size
@@ -713,6 +741,7 @@ class Vector_BEV_observer:
                 :,
                 self.HISTORY :,
             ],
+            traj_buffer[:, : self.HISTORY, ...],
         )
 
 

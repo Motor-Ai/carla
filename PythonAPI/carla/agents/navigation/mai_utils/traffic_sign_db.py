@@ -1,30 +1,17 @@
-# DIPP Lane Features
-# centerline_x
-# centerline_y
-# centerline_yaw
-# leftline_x
-# leftline_y
-# leftline_yaw
-# rightline_x
-# rightline_y
-# rightline_yaw
-# speed_limit
-# centerline_type
-# leftline_type
-# rightline_type
-# traffic_light_type
-# stop_point
-# interpolating
-# stop_sign
-
 # Source: https://routetogermany.com/drivingingermany/road-signs#supplementary-signs
 
-warning_ts_encoding = {"traffic_sign_ahead": 1, "pedestrian_crossing": 2}
+warning_ts_encoding = {"traffic_sign_ahead": 1, 
+                       "pedestrian_crossing": 2}
+
+supplementary_ts_encoding = {"no_entry": 1}
 
 regulatory_ts_encoding = {
     "stop_sign": 1,
     "yield_right_of_way": 2,
     "no_entry": 3,
+    "round_about": 4,
+    "no_overtaking": 5,
+    "bus_stop" : 6,
     "speed_limit_20": 20,
     "speed_limit_30": 30,
     "speed_limit_40": 40,
@@ -40,6 +27,9 @@ directional_ts_encoding = {
     "priority_at_intersection": 1,
     "right_ahead": 2,
     "left_ahead": 3,
+    "priority_road":4,
+    "autobahn_start":5,
+    "autobahn_end":6,
 }
 
 installations_ts_encoding = {
@@ -47,15 +37,55 @@ installations_ts_encoding = {
     "left_obstruction_marker": 2,
 }
 
-lane_type = {
+lane_marking_type = {
     "dashed": 1,
     "yellow_dashed": 2,
     "yellow_solid": 3,
     "double_dashed": 4,
     "other": 5,
     "solid": 6,
+    "line_thin": 7,
 }
 
+traffic_light_type = {
+    "pedestrian": 1,
+    "directional": 2,
+    "construction": 3,
+}
+
+traffic_light_state = {
+    "red": 1,
+    "yellow": 2,
+    "green": 3,
+    "inactive": 4,
+}
+
+lane_surface_type = {
+    "Concrete":1, 
+    "asphalt":2,
+    "Gravel":3,
+    "Pavement":4,
+}
+
+lane_type = {"road":1, 
+          "highway":2,
+          "motorway":3, 
+          "bike_lane":4, 
+          "pedestrian_lane":5,
+          "bus_lane":6,
+          }
+
+lane_morphology_type = {
+    "normal": 1,
+    "curved": 2,
+    "sloped": 3,
+    "unknown": 4,
+    "roundabout": 5,
+    "high_speed":6,
+    "high_curvature":7,
+    "turn":8,
+    "bus_lane":6,
+}
 # influenced by: https://github.com/fzi-forschungszentrum-informatik/Lanelet2/blob/master/lanelet2_core/doc/RegulatoryElementTagging.md
 traffic_feat_idx = {
     "cl_x": 0,
@@ -88,21 +118,18 @@ traffic_feat_idx = {
     "priority": 26,  # or right_of_way
     "right_of_way": 26,  # 0: no assigned priority, 1: right of way, 2: yield
     "all_way_stop": 27,
-    "dynamic": 28,
-    "fallback": 29,
-    "traffic_light": 30,
-    "stop_sign_x": 31,
-    "stop_sign_y": 32,
-    "yield_to_1": 33,
-    "yield_to_2": 34,
-    "yield_to_3": 35,
-    "yield_to_4": 36,
-    "yield_sign": 37,
-    "yield_sign_x": 38,
-    "yield_sign_y": 39,
-    "pedestrian_crossing_x": 40,  # assuming pedestrian crossings are defined by 3 points
-    "pedestrian_crossing_y": 41,
-    "s": 42,
-    "road_id": 43, 
-    "lane_id": 44,
+    "tl_state": 28,  # Index of the traffic light state
+    "stop_sign_x": 29,
+    "stop_sign_y": 30,
+    "yield_to_1": 31,
+    "yield_to_2": 32,
+    "yield_to_3": 33,
+    "yield_to_4": 34,
+    "yield_sign": 35,
+    "yield_sign_x": 36,
+    "yield_sign_y": 37,
+    "pedestrian_crossing_x": 38,  # assuming pedestrian crossings are defined by 3 points
+    "pedestrian_crossing_y": 39,
+    "tl_x": 40,
+    "tl_y": 41,
 }
