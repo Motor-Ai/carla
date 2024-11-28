@@ -25,7 +25,9 @@ from agents.navigation.frenet.frenet_optimal_trajectory import FrenetPlanner
 from agents.navigation.frenet.frenet_optimal_trajectory import closest_wp_idx
 from agents.navigation.frenet.cubic_spline_planner import calc_bspline_course_2
 from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.navigation.frenet.frenet_mai import get_frenet_traj, global_to_egocentric, egocentric_to_global
+from agents.navigation.frenet.frenet_mai import global_to_egocentric, egocentric_to_global
+
+from agents.navigation.frenet.decision_frenet_utils import get_frenet_traj
 from agents.navigation.mai_utils.vector_BEV_observer import Vector_BEV_observer
 
 # from agents.navigation.controller import VehiclePIDController+
@@ -337,7 +339,7 @@ class BasicAgent(object):
 
         # Transform trajectories to global frame
         for fp_ego in fplist:
-            path =fp_ego[:, :3]
+            path = fp_ego[:, :3]
             data = egocentric_to_global(torch.tensor([ego_state[0], ego_state[1], ego_state[2]]), path, velocity=False)
             fp_ego[:,0] = data[:,0]
             fp_ego[:,1] = data[:,1]
